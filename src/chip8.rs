@@ -11,6 +11,9 @@ use sdl2::{
     Sdl,
 };
 
+const WIDTH: usize = 64;
+const HEIGHT: usize = 32;
+
 /*
 _________________
 | 1 | 2 | 3 | 4 |
@@ -41,6 +44,33 @@ const KEYMAP: [Scancode; 16] = [
     Scancode::V,
 ];
 
+const ADDR_MASK: u16 = 0b0000_1111_1111_1111;
+
+const FONTS: [[u8; 5]; 16] = [
+    [0xF0, 0x90, 0x90, 0x90, 0xF0], // 0
+    [0x20, 0x60, 0x20, 0x20, 0x70], // 1
+    [0xF0, 0x10, 0xF0, 0x80, 0xF0], // 2
+    [0xF0, 0x10, 0xF0, 0x10, 0xF0], // 3
+    [0x90, 0x90, 0xF0, 0x10, 0x10], // 4
+    [0xF0, 0x80, 0xF0, 0x10, 0xF0], // 5
+    [0xF0, 0x80, 0xF0, 0x90, 0xF0], // 6
+    [0xF0, 0x10, 0x20, 0x40, 0x40], // 7
+    [0xF0, 0x90, 0xF0, 0x90, 0xF0], // 8
+    [0xF0, 0x90, 0xF0, 0x10, 0xF0], // 9
+    [0xF0, 0x90, 0xF0, 0x90, 0x90], // A
+    [0xE0, 0x90, 0xE0, 0x90, 0xE0], // B
+    [0xF0, 0x80, 0x80, 0x80, 0xF0], // C
+    [0xE0, 0x90, 0x90, 0x90, 0xE0], // D
+    [0xF0, 0x80, 0xF0, 0x80, 0xF0], // E
+    [0xF0, 0x80, 0xF0, 0x80, 0x80], // F
+];
+
+enum Operation {
+    None,
+    ClearDisplay,
+    WaitForKey(u8),
+}
+
 pub struct Chip8 {
     v: [u8; 16],
     i: u16,
@@ -51,10 +81,11 @@ pub struct Chip8 {
     stack: Vec<u16>,
     mem: Mem,
     keys: [bool; 16],
+    gfx: [[u8; HEIGHT]; WIDTH],
 }
 
 impl Chip8 {
-    pub fn new() -> Self {
+    pub fn new(mem: Mem) -> Self {
         // TODO What are the default values ?
         Chip8 {
             v: [0; 16],
@@ -64,8 +95,9 @@ impl Chip8 {
             pc: 0x200,
             sp: 0,
             stack: Vec::with_capacity(16),
-            mem: Mem::new(),
+            mem,
             keys: [false; 16],
+            gfx: [[0; HEIGHT]; WIDTH],
         }
     }
 
@@ -85,6 +117,13 @@ impl Chip8 {
                 self.keys[i] = event_pump.keyboard_state().is_scancode_pressed(*scancode);
             }
 
+            match self.execute() {
+                Operation::None => {}
+                Operation::ClearDisplay => canvas.clear(),
+                // TODO Wait for keypress
+                Operation::WaitForKey(target_register) => todo!(),
+            }
+
             for event in event_pump.poll_iter() {
                 match event {
                     Event::Quit { .. }
@@ -96,7 +135,6 @@ impl Chip8 {
                 }
             }
 
-            canvas.clear();
             canvas.present();
             ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
         }
@@ -121,12 +159,16 @@ impl Chip8 {
     }
 
     #[allow(dead_code)]
-    fn execute(&mut self) {
+    fn execute(&mut self) -> Operation {
         let (h, l) = (self.mem.get(self.pc), self.mem.get(self.pc + 1));
         let opcode = bytes_to_word(h, l);
 
+        println!("Opcode: {:#06X}", opcode);
+
+        let mut ret = Operation::None;
+
         match split_into_4bits(opcode) {
-            (0, 0, 0xE, 0) => self.cls(),
+            (0, 0, 0xE, 0) => ret = Operation::ClearDisplay,
             (0, 0, 0xE, 0xE) => self.ret(),
             (0, _, _, _) => self.sys_addr(),
             (1, _, _, _) => self.jp_addr(opcode),
@@ -153,7 +195,7 @@ impl Chip8 {
             (0xE, _, 9, 0xE) => self.skp_vx(opcode),
             (0xE, _, 0xA, 1) => self.sknp_vx(opcode),
             (0xF, _, 0, 7) => self.ld_vx_dt(opcode),
-            (0xF, _, 0, 0xA) => self.ld_vx_k(opcode),
+            (0xF, _, 0, 0xA) => ret = Operation::WaitForKey(self.ld_vx_k(opcode)),
             (0xF, _, 1, 5) => self.ld_dt_vx(opcode),
             (0xF, _, 1, 8) => self.ld_st_vx(opcode),
             (0xF, _, 1, 0xE) => self.add_i_vx(opcode),
@@ -166,32 +208,35 @@ impl Chip8 {
         }
 
         self.pc += 2;
+
+        ret
     }
 
     // 0nnn
     fn sys_addr(&mut self) {
-        todo!("Jump to a machine code routine at nnn")
+        todo!("Jump to a machine code routine at nnn");
     }
 
     // 00E0
-    fn cls(&mut self) {
-        todo!("Clear the display");
-    }
+    // fn cls(&mut self) {}
 
     // 00EE
     fn ret(&mut self) {
-        todo!("Return from a subroutine");
+        if let Some(value) = self.stack.pop() {
+            self.pc = value;
+            self.sp -= 1;
+        }
     }
 
     // 1nnn
     fn jp_addr(&mut self, opcode: u16) {
-        let addr = opcode & 0b0111;
+        let addr = opcode & ADDR_MASK;
         self.pc = addr;
     }
 
     // 2nnn
     fn call_addr(&mut self, opcode: u16) {
-        let addr = opcode & 0b0111;
+        let addr = opcode & ADDR_MASK;
 
         self.sp += 1;
         self.stack.push(self.pc);
@@ -323,14 +368,14 @@ impl Chip8 {
 
     // Annn
     fn ld_i_addr(&mut self, opcode: u16) {
-        let addr = opcode & 0b0111;
+        let addr = opcode & ADDR_MASK;
 
         self.i = addr;
     }
 
     // Bnnn
     fn jp_v0_addr(&mut self, opcode: u16) {
-        let addr = opcode & 0b0111;
+        let addr = opcode & ADDR_MASK;
 
         self.pc = addr + self.v[0] as u16;
     }
@@ -347,7 +392,9 @@ impl Chip8 {
 
     // Dxyn
     fn drw_vx_vy_nibble(&mut self, opcode: u16) {
-        todo!("Implement drawing");
+        let (x, y, n) = get_xyn(opcode);
+        let bytes = self.mem.read_bytes(self.i, n);
+        // TODO Finish this
     }
 
     // Ex9E
@@ -376,9 +423,9 @@ impl Chip8 {
     }
 
     // Fx0A
-    fn ld_vx_k(&mut self, opcode: u16) {
+    fn ld_vx_k(&mut self, opcode: u16) -> u8 {
         let (x, _) = get_xkk(opcode);
-        todo!("Find a way to stop the execution");
+        x as u8
     }
 
     // Fx15
@@ -435,20 +482,31 @@ impl Chip8 {
     fn skip_instruction(&mut self) {
         self.pc += 2;
     }
+
+    fn ld_vx(&mut self, x: u8, key_value: u8) {
+        self.v[x as usize] = key_value;
+    }
 }
 
 fn get_xkk(n: u16) -> (usize, u8) {
-    let x = ((n & 0100) >> 2) as usize;
-    let kk = (n & 0011) as u8;
+    let x = ((n & 0b0000_1111_0000_0000) >> 8) as usize;
+    let kk = (n & 0b0000_0000_1111_1111) as u8;
 
     (x, kk)
 }
 
 fn get_xy(n: u16) -> (usize, usize) {
-    let x = ((n & 0100) >> 2) as usize;
-    let y = ((n & 0010) >> 2) as usize;
+    let x = ((n & 0b0000_1111_0000_0000) >> 8) as usize;
+    let y = ((n & 0b0000_0000_1111_0000) >> 4) as usize;
 
     (x, y)
+}
+
+fn get_xyn(n: u16) -> (usize, usize, u8) {
+    let (x, y) = get_xy(n);
+    let y = (n & 0b1111) as usize;
+
+    (x, y, n)
 }
 
 fn bytes_to_word(h: u8, l: u8) -> u16 {
@@ -457,5 +515,5 @@ fn bytes_to_word(h: u8, l: u8) -> u16 {
 
 fn split_into_4bits(n: u16) -> (u8, u8, u8, u8) {
     let [h, l] = n.to_be_bytes();
-    (h >> 4, h & 0b00001111, l >> 4, l & 0b00001111)
+    (h >> 4, h & 0b0000_1111, l >> 4, l & 0b0000_1111)
 }
