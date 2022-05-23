@@ -11,7 +11,19 @@ use sdl2::{
     Sdl,
 };
 
+/*
+_________________
+| 1 | 2 | 3 | 4 |
+-----------------
+| Q | W | E | R |
+-----------------
+| A | S | D | F |
+-----------------
+| Z | X | C | V |
+-----------------
+*/
 const KEYMAP: [Scancode; 16] = [
+    Scancode::X,
     Scancode::Kp1,
     Scancode::Kp2,
     Scancode::Kp3,
@@ -22,7 +34,6 @@ const KEYMAP: [Scancode; 16] = [
     Scancode::S,
     Scancode::D,
     Scancode::Z,
-    Scancode::X,
     Scancode::C,
     Scancode::Kp4,
     Scancode::R,
@@ -39,6 +50,7 @@ pub struct Chip8 {
     sp: u8,
     stack: Vec<u16>,
     mem: Mem,
+    keys: [bool; 16],
 }
 
 impl Chip8 {
@@ -53,6 +65,7 @@ impl Chip8 {
             sp: 0,
             stack: Vec::with_capacity(16),
             mem: Mem::new(),
+            keys: [false; 16],
         }
     }
 
@@ -68,7 +81,9 @@ impl Chip8 {
         let mut event_pump = sdl_context.event_pump().unwrap();
 
         'running: loop {
-            // event_pump.keyboard_state().pressed_scancodes()
+            for (i, scancode) in KEYMAP.iter().enumerate() {
+                self.keys[i] = event_pump.keyboard_state().is_scancode_pressed(*scancode);
+            }
 
             for event in event_pump.poll_iter() {
                 match event {
@@ -315,6 +330,24 @@ impl Chip8 {
     // Dxyn
     fn drw_vx_vy_nibble(&mut self, opcode: u16) {
         todo!("Implement drawing");
+    }
+
+    // Ex9E
+    fn skp_vx(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+
+        if self.keys[x as usize] {
+            self.skip_instruction();
+        }
+    }
+
+    // ExA1
+    fn sknp_vx(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+
+        if !self.keys[x as usize] {
+            self.skip_instruction();
+        }
     }
 
     fn skip_instruction(&mut self) {
