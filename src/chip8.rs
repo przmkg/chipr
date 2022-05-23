@@ -143,6 +143,24 @@ impl Chip8 {
             (8, _, _, 4) => self.add_vx_vy(opcode),
             (8, _, _, 5) => self.sub_vx_vy(opcode),
             (8, _, _, 6) => self.shr_vx_vy(opcode),
+            (8, _, _, 7) => self.subn_vx_vy(opcode),
+            (8, _, _, 0xE) => self.shl_vx_vy(opcode),
+            (9, _, _, 0) => self.sne_vx_vy(opcode),
+            (0xA, _, _, _) => self.ld_i_addr(opcode),
+            (0xB, _, _, _) => self.jp_v0_addr(opcode),
+            (0xC, _, _, _) => self.rnd_vx_kk(opcode),
+            (0xD, _, _, _) => self.drw_vx_vy_nibble(opcode),
+            (0xE, _, 9, 0xE) => self.skp_vx(opcode),
+            (0xE, _, 0xA, 1) => self.sknp_vx(opcode),
+            (0xF, _, 0, 7) => self.ld_vx_dt(opcode),
+            (0xF, _, 0, 0xA) => self.ld_vx_k(opcode),
+            (0xF, _, 1, 5) => self.ld_dt_vx(opcode),
+            (0xF, _, 1, 8) => self.ld_st_vx(opcode),
+            (0xF, _, 1, 0xE) => self.add_i_vx(opcode),
+            (0xF, _, 2, 9) => self.ld_f_vx(opcode),
+            (0xF, _, 3, 3) => self.ld_b_vx(opcode),
+            (0xF, _, 5, 5) => self.ld_addri_vx(opcode),
+            (0xF, _, 6, 5) => self.ld_vx_addri(opcode),
 
             _ => panic!("Unimplemented: {:#06X}", opcode),
         }
@@ -347,6 +365,70 @@ impl Chip8 {
 
         if !self.keys[x as usize] {
             self.skip_instruction();
+        }
+    }
+
+    // Fx07
+    fn ld_vx_dt(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+
+        self.v[x as usize] = self.delay_timer;
+    }
+
+    // Fx0A
+    fn ld_vx_k(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+        todo!("Find a way to stop the execution");
+    }
+
+    // Fx15
+    fn ld_dt_vx(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+
+        self.delay_timer = self.v[x as usize];
+    }
+
+    // Fx18
+    fn ld_st_vx(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+
+        self.sound_timer = self.v[x as usize];
+    }
+
+    // Fx1E
+    fn add_i_vx(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+
+        self.i += self.v[x as usize] as u16;
+    }
+
+    // Fx29
+    fn ld_f_vx(&mut self, opcode: u16) {
+        todo!("Set location of sprite");
+    }
+
+    // Fx33
+    fn ld_b_vx(&mut self, opcode: u16) {
+        todo!("Store BCD representation");
+    }
+
+    // Fx55
+    fn ld_addri_vx(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+
+        for i in 0..=x {
+            let addr = self.i + i as u16;
+            self.mem.set(addr, self.v[i]);
+        }
+    }
+
+    // Fx65
+    fn ld_vx_addri(&mut self, opcode: u16) {
+        let (x, _) = get_xkk(opcode);
+
+        for i in 0..=x {
+            let addr = self.i + i as u16;
+            self.v[i] = self.mem.get(addr);
         }
     }
 

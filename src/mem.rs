@@ -13,4 +13,8 @@ impl Mem {
     pub fn get(&self, address: u16) -> u8 {
         self.ram[address as usize]
     }
+
+    pub fn set(&mut self, address: u16, value: u8) {
+        self.ram[address as usize] = value;
+    }
 }
