@@ -164,7 +164,10 @@ impl Chip8 {
         let mut ret = Operation::None;
 
         match split_into_4bits(opcode) {
-            (0, 0, 0xE, 0) => ret = Operation::ClearDisplay,
+            (0, 0, 0xE, 0) => {
+                self.cls();
+                ret = Operation::ClearDisplay;
+            }
             (0, 0, 0xE, 0xE) => self.ret(),
             (0, _, _, _) => self.sys_addr(),
             (1, _, _, _) => self.jp_addr(opcode),
@@ -203,13 +206,7 @@ impl Chip8 {
             _ => panic!("Unimplemented: {:#06X}", opcode),
         }
 
-        self.pc += 2;
-
         ret
-    }
-
-    pub fn skip_instruction(&mut self) {
-        self.pc += 2;
     }
 
     fn ld_vx(&mut self, x: u8, key_value: u8) {
