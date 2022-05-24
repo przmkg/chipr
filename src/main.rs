@@ -10,7 +10,15 @@ mod instr;
 mod mem;
 
 fn main() -> std::io::Result<()> {
-    let file = File::open("roms/MAZE")?;
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() != 2 {
+        println!("Missing path to rom.\nUsage: chipr rom_path");
+        std::process::exit(-1);
+    }
+
+    println!("{:?}", args);
+    let file = File::open(args.get(1).unwrap())?;
     let mut buf_reader = BufReader::new(file);
     let mut buffer = Vec::new();
     buf_reader.read_to_end(&mut buffer)?;
