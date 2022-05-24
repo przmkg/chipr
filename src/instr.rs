@@ -189,7 +189,8 @@ impl Instructions for Chip8 {
     fn add_vx_kk(&mut self, opcode: u16) {
         let (x, kk) = get_xkk(opcode);
 
-        self.v[x] += kk;
+        // TODO Should it wrap ?
+        self.v[x] = self.v[x].wrapping_add(kk);
         self.pc += 2;
     }
 
@@ -229,9 +230,11 @@ impl Instructions for Chip8 {
     fn add_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        let (result, carry) = self.v[x].overflowing_add(self.v[y]);
-        self.v[x] = result;
+        // TODO Wrap ?
+        let carry = self.v[y] > self.v[x];
         self.v[0xF] = if carry { 1 } else { 0 };
+        self.v[x] = self.v[x].wrapping_add(self.v[y]);
+
         self.pc += 2;
     }
 
@@ -239,9 +242,10 @@ impl Instructions for Chip8 {
     fn sub_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        let (result, overflow) = self.v[x].overflowing_sub(self.v[y]);
-        self.v[x] = result;
-        self.v[y] = if overflow { 0 } else { 1 };
+        let borrow = self.v[x] > self.v[y];
+        self.v[0xF] = if borrow { 0 } else { 1 };
+        self.v[x] = self.v[x].wrapping_sub(self.v[y]);
+
         self.pc += 2;
     }
 
@@ -258,9 +262,10 @@ impl Instructions for Chip8 {
     fn subn_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        let (result, overflow) = self.v[y].overflowing_sub(self.v[x]);
-        self.v[x] = result;
-        self.v[y] = if overflow { 1 } else { 0 };
+        let borrow = self.v[y] > self.v[x];
+        self.v[0xF] = if borrow { 0 } else { 1 };
+        self.v[x] = self.v[y].wrapping_sub(self.v[x]);
+
         self.pc += 2;
     }
 
@@ -313,28 +318,35 @@ impl Instructions for Chip8 {
     fn drw_vx_vy_nibble(&mut self, opcode: u16) {
         // TODO Not very pretty
         // TODO Wrap pixels around
-        let (x, y, n) = get_xyn(opcode);
-        let pos_x = self.v[x] as usize;
-        let pos_y = self.v[y] as usize;
-        let bytes = self.mem.read_bytes(self.i, n);
+        let (rx, ry, n) = get_xyn(opcode);
+        let data = self.mem.read_bytes(self.i, n);
 
-        bytes.iter().enumerate().for_each(|(idx_y, byte)| {
+        self.v[0xF] = 0;
+        data.iter().enumerate().for_each(|(j, byte)| {
             let bits = byte_to_bit_array(*byte);
 
-            for (idx_x, bit) in bits.iter().enumerate() {
-                if pos_x + idx_x < WIDTH && pos_y + idx_y < HEIGHT {
-                    let previous_value = self.gfx[pos_x + idx_x][pos_y + idx_y];
+            for i in 0..bits.len() {
+                let mut x = self.v[rx] as usize + i;
+                let mut y = self.v[ry] as usize + j;
 
-                    self.v[0xF] = if previous_value == *bit && *bit == true {
-                        1
-                    } else {
-                        0
-                    };
-
-                    self.gfx[pos_x + idx_x][pos_y + idx_y] ^= *bit;
+                if x >= WIDTH {
+                    x -= WIDTH;
                 }
+
+                if y >= HEIGHT {
+                    y -= HEIGHT;
+                }
+
+                let previous_value = self.gfx[x][y];
+
+                if previous_value == bits[i] && bits[i] == true {
+                    self.v[0xF] = 1;
+                }
+
+                self.gfx[x][y] ^= bits[i];
             }
         });
+
         self.pc += 2;
     }
 
@@ -488,4 +500,17 @@ fn byte_to_bit_array(b: u8) -> [bool; 8] {
         ((b & 0b0000_0010) >> 1) == 1,
         (b & 0b0000_0001) == 1,
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::instr::byte_to_bit_array;
+
+    #[test]
+    fn test_byte_to_bit_array() {
+        assert_eq!(
+            byte_to_bit_array(0b1100_0001),
+            [true, true, false, false, false, false, false, true]
+        );
+    }
 }

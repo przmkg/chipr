@@ -17,7 +17,6 @@ fn main() -> std::io::Result<()> {
         std::process::exit(-1);
     }
 
-    println!("{:?}", args);
     let file = File::open(args.get(1).unwrap())?;
     let mut buf_reader = BufReader::new(file);
     let mut buffer = Vec::new();

@@ -96,7 +96,6 @@ impl Chip8 {
         let mut event_pump = sdl_context.event_pump().unwrap();
 
         'running: loop {
-            canvas.clear();
             for (i, scancode) in KEYMAP.iter().enumerate() {
                 self.keys[i] = event_pump.keyboard_state().is_scancode_pressed(*scancode);
             }
@@ -105,7 +104,7 @@ impl Chip8 {
                 Operation::None => {}
                 Operation::ClearDisplay => canvas.clear(),
                 // TODO Wait for keypress
-                Operation::WaitForKey(target_register) => todo!(),
+                Operation::WaitForKey(target_register) => {}
             }
 
             for event in event_pump.poll_iter() {
@@ -132,6 +131,18 @@ impl Chip8 {
 
             canvas.set_draw_color(Color::BLACK);
             canvas.present();
+
+            if self.delay_timer > 0 {
+                self.delay_timer -= 1;
+            }
+
+            if self.sound_timer > 0 {
+                if self.sound_timer == 1 {
+                    audio.start_beep();
+                }
+                self.sound_timer -= 1;
+            }
+
             ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
         }
     }
@@ -159,7 +170,7 @@ impl Chip8 {
         let (h, l) = (self.mem.get(self.pc), self.mem.get(self.pc + 1));
         let opcode = bytes_to_word(h, l);
 
-        println!("Opcode: {:#06X}", opcode);
+        println!("Opcode: {:04X}", opcode);
 
         let mut ret = Operation::None;
 

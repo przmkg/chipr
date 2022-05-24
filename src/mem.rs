@@ -26,8 +26,10 @@ impl Mem {
         ];
 
         let mut ram: [u8; RAM_SIZE] = [0; RAM_SIZE];
-        let (left, _) = ram.split_at_mut(80);
-        left.copy_from_slice(&fonts);
+
+        for i in 0..80 {
+            ram[i + 0x50] = fonts[i];
+        }
 
         Mem { ram }
     }
@@ -47,14 +49,8 @@ impl Mem {
         self.ram[address as usize] = value;
     }
 
-    pub fn read_bytes(&self, address: u16, n: u8) -> Vec<u8> {
-        let mut bytes: Vec<u8> = Vec::with_capacity(n as usize);
-
-        for i in 0..=n {
-            bytes.push(self.ram[address as usize + i as usize]);
-        }
-
-        bytes
+    pub fn read_bytes(&self, address: u16, n: u8) -> &[u8] {
+        &self.ram[address as usize..address as usize + n as usize]
     }
 
     pub fn get_font_address(&self, font: u8) -> u16 {
