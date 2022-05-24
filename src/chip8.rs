@@ -7,6 +7,7 @@ use sdl2::{
     event::Event,
     keyboard::{Keycode, Scancode},
     pixels::Color,
+    rect::Rect,
     video::Window,
     Sdl,
 };
@@ -81,7 +82,7 @@ pub struct Chip8 {
     stack: Vec<u16>,
     mem: Mem,
     keys: [bool; 16],
-    gfx: [[u8; HEIGHT]; WIDTH],
+    gfx: [[bool; HEIGHT]; WIDTH],
 }
 
 impl Chip8 {
@@ -97,7 +98,7 @@ impl Chip8 {
             stack: Vec::with_capacity(16),
             mem,
             keys: [false; 16],
-            gfx: [[0; HEIGHT]; WIDTH],
+            gfx: [[false; HEIGHT]; WIDTH],
         }
     }
 
@@ -135,6 +136,18 @@ impl Chip8 {
                 }
             }
 
+            canvas.set_draw_color(Color::WHITE);
+            for x in 0..WIDTH {
+                for y in 0..HEIGHT {
+                    if self.gfx[x][y] {
+                        canvas
+                            .fill_rect(Rect::new(x as i32 * 4, y as i32 * 4, 4, 4))
+                            .unwrap();
+                    }
+                }
+            }
+
+            canvas.set_draw_color(Color::BLACK);
             canvas.present();
             ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
         }
@@ -146,7 +159,7 @@ impl Chip8 {
         let video_subsystem = sdl_context.video().unwrap();
 
         let window = video_subsystem
-            .window("chipr", 800, 600)
+            .window("chipr", 4 * WIDTH as u32, 4 * HEIGHT as u32)
             .position_centered()
             .build()
             .unwrap();
@@ -392,9 +405,22 @@ impl Chip8 {
 
     // Dxyn
     fn drw_vx_vy_nibble(&mut self, opcode: u16) {
+        // TODO Not very pretty
         let (x, y, n) = get_xyn(opcode);
+        let pos_x = self.v[x] as usize;
+        let pos_y = self.v[y] as usize;
         let bytes = self.mem.read_bytes(self.i, n);
-        // TODO Finish this
+
+        bytes.iter().enumerate().for_each(|(idx_y, byte)| {
+            let bits = byte_to_bit_array(*byte);
+
+            for (idx_x, bit) in bits.iter().enumerate() {
+                // TODO Set the flag
+                if pos_x + idx_x < WIDTH && pos_y + idx_y < HEIGHT {
+                    self.gfx[pos_x + idx_x][pos_y + idx_y] ^= *bit;
+                }
+            }
+        });
     }
 
     // Ex9E
@@ -451,12 +477,12 @@ impl Chip8 {
 
     // Fx29
     fn ld_f_vx(&mut self, opcode: u16) {
-        todo!("Set location of sprite");
+        // todo!("Set location of sprite");
     }
 
     // Fx33
     fn ld_b_vx(&mut self, opcode: u16) {
-        todo!("Store BCD representation");
+        // todo!("Store BCD representation");
     }
 
     // Fx55
@@ -504,9 +530,9 @@ fn get_xy(n: u16) -> (usize, usize) {
 
 fn get_xyn(n: u16) -> (usize, usize, u8) {
     let (x, y) = get_xy(n);
-    let y = (n & 0b1111) as usize;
+    let nn = (n & 0b1111) as u8;
 
-    (x, y, n)
+    (x, y, nn)
 }
 
 fn bytes_to_word(h: u8, l: u8) -> u16 {
@@ -516,4 +542,17 @@ fn bytes_to_word(h: u8, l: u8) -> u16 {
 fn split_into_4bits(n: u16) -> (u8, u8, u8, u8) {
     let [h, l] = n.to_be_bytes();
     (h >> 4, h & 0b0000_1111, l >> 4, l & 0b0000_1111)
+}
+
+fn byte_to_bit_array(b: u8) -> [bool; 8] {
+    [
+        ((b & 0b1000_0000) >> 7) == 1,
+        ((b & 0b0100_0000) >> 6) == 1,
+        ((b & 0b0010_0000) >> 5) == 1,
+        ((b & 0b0001_0000) >> 4) == 1,
+        ((b & 0b0000_1000) >> 3) == 1,
+        ((b & 0b0000_0100) >> 2) == 1,
+        ((b & 0b0000_0010) >> 1) == 1,
+        (b & 0b0000_0001) == 1,
+    ]
 }

@@ -9,7 +9,7 @@ mod chip8;
 mod mem;
 
 fn main() -> std::io::Result<()> {
-    let file = File::open("roms/Maze (alt) [David Winter, 199x].ch8")?;
+    let file = File::open("roms/INVADERS")?;
     let mut buf_reader = BufReader::new(file);
     let mut buffer = Vec::new();
     buf_reader.read_to_end(&mut buffer)?;

@@ -28,7 +28,7 @@ impl Mem {
         let mut bytes: Vec<u8> = Vec::with_capacity(n as usize);
 
         for i in 0..=n {
-            bytes.push(self.ram[i as usize]);
+            bytes.push(self.ram[address as usize + i as usize]);
         }
 
         bytes
