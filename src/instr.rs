@@ -249,7 +249,6 @@ impl Instructions for Chip8 {
     fn shr_vx_vy(&mut self, opcode: u16) {
         let (x, _) = get_xy(opcode);
 
-        // TODO Unsure
         self.v[0xF] = self.v[x] & 1;
         self.v[x] = self.v[x] >> 1;
         self.pc += 2;
@@ -269,7 +268,6 @@ impl Instructions for Chip8 {
     fn shl_vx_vy(&mut self, opcode: u16) {
         let (x, _) = get_xy(opcode);
 
-        // TODO Unsure
         self.v[0xF] = self.v[x] & 0b1000_0000;
         self.v[x] = self.v[x] << 1;
         self.pc += 2;
@@ -413,7 +411,16 @@ impl Instructions for Chip8 {
 
     // Fx33
     fn ld_b_vx(&mut self, opcode: u16) {
-        // todo!("Store BCD representation");
+        let (x, _) = get_xkk(opcode);
+
+        let addr = self.i;
+        let value = self.v[x];
+
+        // TODO Unsure
+        self.mem.set(addr, value / 100);
+        self.mem.set(addr + 1, value / 10);
+        self.mem.set(addr + 2, value % 10);
+
         self.pc += 2;
     }
 
