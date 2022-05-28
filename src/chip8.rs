@@ -190,6 +190,7 @@ impl Chip8 {
 
         let window = video_subsystem
             // .window("chipr", 4 * WIDTH as u32, 4 * HEIGHT as u32)
+            // TODO Resize properly
             .window("chipr", 800, 600)
             .position_centered()
             .build()

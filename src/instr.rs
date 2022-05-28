@@ -190,7 +190,7 @@ impl Instructions for Chip8 {
         let (x, kk) = get_xkk(opcode);
 
         // TODO Should it wrap ?
-        self.v[x] = self.v[x].wrapping_add(kk);
+        self.v[x] = self.v[x].saturating_add(kk);
         self.pc += 2;
     }
 
@@ -230,10 +230,9 @@ impl Instructions for Chip8 {
     fn add_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        // TODO Wrap ?
-        let carry = self.v[y] > self.v[x];
-        self.v[0xF] = if carry { 1 } else { 0 };
-        self.v[x] = self.v[x].wrapping_add(self.v[y]);
+        let result = self.v[x] as u16 + self.v[y] as u16;
+        self.v[0xF] = if result > 255 { 1 } else { 0 };
+        self.v[x] = result as u8;
 
         self.pc += 2;
     }
@@ -243,7 +242,7 @@ impl Instructions for Chip8 {
         let (x, y) = get_xy(opcode);
 
         let borrow = self.v[x] > self.v[y];
-        self.v[0xF] = if borrow { 0 } else { 1 };
+        self.v[0xF] = if borrow { 1 } else { 0 };
         self.v[x] = self.v[x].wrapping_sub(self.v[y]);
 
         self.pc += 2;
@@ -273,7 +272,7 @@ impl Instructions for Chip8 {
     fn shl_vx_vy(&mut self, opcode: u16) {
         let (x, _) = get_xy(opcode);
 
-        self.v[0xF] = self.v[x] & 0b1000_0000;
+        self.v[0xF] = self.v[x] & 0x80;
         self.v[x] = self.v[x] << 1;
         self.pc += 2;
     }
@@ -326,16 +325,8 @@ impl Instructions for Chip8 {
             let bits = byte_to_bit_array(*byte);
 
             for i in 0..bits.len() {
-                let mut x = self.v[rx] as usize + i;
-                let mut y = self.v[ry] as usize + j;
-
-                if x >= WIDTH {
-                    x -= WIDTH;
-                }
-
-                if y >= HEIGHT {
-                    y -= HEIGHT;
-                }
+                let x = (self.v[rx] as usize + i) % WIDTH;
+                let y = (self.v[ry] as usize + j) % HEIGHT;
 
                 let previous_value = self.gfx[x][y];
 
@@ -382,9 +373,10 @@ impl Instructions for Chip8 {
 
     // Fx0A
     fn ld_vx_k(&mut self, opcode: u16) -> u8 {
-        let (x, _) = get_xkk(opcode);
-        self.pc += 2;
-        x as u8
+        todo!("Not implemented");
+        // let (x, _) = get_xkk(opcode);
+        // self.pc += 2;
+        // x as u8
     }
 
     // Fx15
@@ -417,6 +409,7 @@ impl Instructions for Chip8 {
         let font = self.v[x] & 0xF;
 
         let addr = self.mem.get_font_address(font);
+        println!("{}", addr);
         self.i = addr;
         self.pc += 2;
     }
