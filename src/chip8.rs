@@ -65,6 +65,7 @@ pub struct Chip8 {
     pub mem: Mem,
     pub keys: [bool; 16],
     pub gfx: [[bool; HEIGHT]; WIDTH],
+    pub paused: bool,
 }
 
 impl Chip8 {
@@ -81,6 +82,7 @@ impl Chip8 {
             mem,
             keys: [false; 16],
             gfx: [[false; HEIGHT]; WIDTH],
+            paused: false,
         }
     }
 
@@ -208,7 +210,7 @@ impl Chip8 {
         let (h, l) = (self.mem.get(self.pc), self.mem.get(self.pc + 1));
         let opcode = bytes_to_word(h, l);
 
-        // println!("Opcode: {:04X}", opcode);
+        println!("Opcode: {:04X}", opcode);
 
         let mut ret = Operation::None;
 

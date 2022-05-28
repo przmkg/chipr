@@ -113,7 +113,7 @@ pub trait Instructions {
 impl Instructions for Chip8 {
     // 0nnn
     fn sys_addr(&mut self) {
-        todo!("Jump to a machine code routine at nnn");
+        // Ignore...
     }
 
     // 00E0
@@ -125,7 +125,7 @@ impl Instructions for Chip8 {
     fn ret(&mut self) {
         if let Some(value) = self.stack.pop() {
             self.pc = value;
-            self.sp -= 1;
+            // self.sp -= 1;
         }
     }
 
@@ -139,7 +139,7 @@ impl Instructions for Chip8 {
     fn call_addr(&mut self, opcode: u16) {
         let addr = opcode & ADDR_MASK;
 
-        self.sp += 1;
+        // self.sp += 1;
         self.stack.push(self.pc);
         self.pc = addr;
     }
@@ -190,7 +190,8 @@ impl Instructions for Chip8 {
         let (x, kk) = get_xkk(opcode);
 
         // TODO Should it wrap ?
-        self.v[x] = self.v[x].saturating_add(kk);
+        self.v[x] = self.v[x].wrapping_add(kk);
+
         self.pc += 2;
     }
 
@@ -241,8 +242,7 @@ impl Instructions for Chip8 {
     fn sub_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        let borrow = self.v[x] > self.v[y];
-        self.v[0xF] = if borrow { 1 } else { 0 };
+        self.v[0xF] = if self.v[x] > self.v[y] { 1 } else { 0 };
         self.v[x] = self.v[x].wrapping_sub(self.v[y]);
 
         self.pc += 2;
@@ -261,8 +261,7 @@ impl Instructions for Chip8 {
     fn subn_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        let borrow = self.v[y] > self.v[x];
-        self.v[0xF] = if borrow { 0 } else { 1 };
+        self.v[0xF] = if self.v[y] > self.v[x] { 1 } else { 0 };
         self.v[x] = self.v[y].wrapping_sub(self.v[x]);
 
         self.pc += 2;
@@ -373,10 +372,9 @@ impl Instructions for Chip8 {
 
     // Fx0A
     fn ld_vx_k(&mut self, opcode: u16) -> u8 {
-        todo!("Not implemented");
-        // let (x, _) = get_xkk(opcode);
-        // self.pc += 2;
-        // x as u8
+        let (x, _) = get_xkk(opcode);
+        self.pc += 2;
+        x as u8
     }
 
     // Fx15
@@ -399,6 +397,7 @@ impl Instructions for Chip8 {
     fn add_i_vx(&mut self, opcode: u16) {
         let (x, _) = get_xkk(opcode);
 
+        // TODO Set overflow like on the Amiga implementation
         self.i += self.v[x as usize] as u16;
         self.pc += 2;
     }
@@ -423,8 +422,8 @@ impl Instructions for Chip8 {
 
         // TODO Unsure
         self.mem.set(addr, value / 100);
-        self.mem.set(addr + 1, value / 10);
-        self.mem.set(addr + 2, value % 10);
+        self.mem.set(addr + 1, (value / 10) % 10);
+        self.mem.set(addr + 2, (value % 100) % 10);
 
         self.pc += 2;
     }
