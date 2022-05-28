@@ -10,7 +10,7 @@ use sdl2::{
     event::Event,
     keyboard::{Keycode, Scancode},
     pixels::Color,
-    rect::Rect,
+    rect::{Point, Rect},
     video::Window,
     Sdl,
 };
@@ -95,7 +95,19 @@ impl Chip8 {
 
         let mut event_pump = sdl_context.event_pump().unwrap();
 
+        let lines = [
+            Point::new(0, (HEIGHT * 4) as i32 + 1),
+            Point::new((WIDTH * 4) as i32 + 1, (HEIGHT * 4) as i32 + 1),
+            Point::new((WIDTH * 4) as i32 + 1, 0),
+        ];
+
+        let ttf = sdl2::ttf::init().unwrap();
+        let font = ttf.load_font("assets/OpenSans-Regular.ttf", 14).unwrap();
+        let texture_creator = canvas.texture_creator();
+
         'running: loop {
+            canvas.clear();
+
             for (i, scancode) in KEYMAP.iter().enumerate() {
                 self.keys[i] = event_pump.keyboard_state().is_scancode_pressed(*scancode);
             }
@@ -129,6 +141,30 @@ impl Chip8 {
                 }
             }
 
+            canvas.set_draw_color(Color::GRAY);
+
+            // Draw the border of the game screen
+            canvas.draw_lines(&lines[..]).unwrap();
+
+            // Draw register values
+            for i in 0..16 {
+                // TODO Optimize font drawing
+                let font_result = font
+                    .render(format!("V{:X}: {:02X}", i, self.v[i]).as_str())
+                    .solid(Color::WHITE)
+                    .unwrap();
+
+                let texture = texture_creator
+                    .create_texture_from_surface(font_result)
+                    .unwrap();
+
+                let x = 100 * (i as i32 % 5);
+                let y = 50 * (i as i32 / 5);
+                canvas
+                    .copy(&texture, None, Some(Rect::new(x + 300, y, 50, 20)))
+                    .unwrap();
+            }
+
             canvas.set_draw_color(Color::BLACK);
             canvas.present();
 
@@ -153,7 +189,8 @@ impl Chip8 {
         let video_subsystem = sdl_context.video().unwrap();
 
         let window = video_subsystem
-            .window("chipr", 4 * WIDTH as u32, 4 * HEIGHT as u32)
+            // .window("chipr", 4 * WIDTH as u32, 4 * HEIGHT as u32)
+            .window("chipr", 800, 600)
             .position_centered()
             .build()
             .unwrap();
@@ -170,7 +207,7 @@ impl Chip8 {
         let (h, l) = (self.mem.get(self.pc), self.mem.get(self.pc + 1));
         let opcode = bytes_to_word(h, l);
 
-        println!("Opcode: {:04X}", opcode);
+        // println!("Opcode: {:04X}", opcode);
 
         let mut ret = Operation::None;
 
