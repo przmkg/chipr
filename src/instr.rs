@@ -125,7 +125,6 @@ impl Instructions for Chip8 {
     fn ret(&mut self) {
         if let Some(value) = self.stack.pop() {
             self.pc = value;
-            // self.sp -= 1;
         }
     }
 
@@ -139,7 +138,6 @@ impl Instructions for Chip8 {
     fn call_addr(&mut self, opcode: u16) {
         let addr = opcode & ADDR_MASK;
 
-        // self.sp += 1;
         self.stack.push(self.pc);
         self.pc = addr;
     }
@@ -190,7 +188,9 @@ impl Instructions for Chip8 {
         let (x, kk) = get_xkk(opcode);
 
         // TODO Should it wrap ?
-        self.v[x] = self.v[x].wrapping_add(kk);
+        let (res, overflow) = self.v[x].overflowing_add(kk);
+        self.v[x] = res;
+        self.v[0xF] = if overflow { 1 } else { 0 };
 
         self.pc += 2;
     }
@@ -231,9 +231,9 @@ impl Instructions for Chip8 {
     fn add_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        let result = self.v[x] as u16 + self.v[y] as u16;
-        self.v[0xF] = if result > 255 { 1 } else { 0 };
-        self.v[x] = result as u8;
+        let (result, overflow) = self.v[x].overflowing_add(self.v[y]);
+        self.v[x] = result;
+        self.v[0xF] = if overflow { 1 } else { 0 };
 
         self.pc += 2;
     }
@@ -242,8 +242,10 @@ impl Instructions for Chip8 {
     fn sub_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        self.v[0xF] = if self.v[x] > self.v[y] { 1 } else { 0 };
-        self.v[x] = self.v[x].wrapping_sub(self.v[y]);
+        let (result, overflow) = self.v[x].overflowing_sub(self.v[y]);
+
+        self.v[x] = result;
+        self.v[0xF] = if overflow { 1 } else { 0 };
 
         self.pc += 2;
     }
@@ -253,7 +255,9 @@ impl Instructions for Chip8 {
         let (x, _) = get_xy(opcode);
 
         self.v[0xF] = self.v[x] & 1;
-        self.v[x] = self.v[x] >> 1;
+        let (result, _) = self.v[x].overflowing_shr(1);
+        self.v[x] = result;
+
         self.pc += 2;
     }
 
@@ -261,8 +265,10 @@ impl Instructions for Chip8 {
     fn subn_vx_vy(&mut self, opcode: u16) {
         let (x, y) = get_xy(opcode);
 
-        self.v[0xF] = if self.v[y] > self.v[x] { 1 } else { 0 };
-        self.v[x] = self.v[y].wrapping_sub(self.v[x]);
+        let (result, overflow) = self.v[y].overflowing_sub(self.v[x]);
+
+        self.v[x] = result;
+        self.v[0xF] = if overflow { 0 } else { 1 };
 
         self.pc += 2;
     }
@@ -272,7 +278,8 @@ impl Instructions for Chip8 {
         let (x, _) = get_xy(opcode);
 
         self.v[0xF] = self.v[x] & 0x80;
-        self.v[x] = self.v[x] << 1;
+        let (result, _) = self.v[x].overflowing_shl(1);
+        self.v[x] = result;
         self.pc += 2;
     }
 
@@ -314,8 +321,6 @@ impl Instructions for Chip8 {
 
     // Dxyn
     fn drw_vx_vy_nibble(&mut self, opcode: u16) {
-        // TODO Not very pretty
-        // TODO Wrap pixels around
         let (rx, ry, n) = get_xyn(opcode);
         let data = self.mem.read_bytes(self.i, n);
 
@@ -327,13 +332,15 @@ impl Instructions for Chip8 {
                 let x = (self.v[rx] as usize + i) % WIDTH;
                 let y = (self.v[ry] as usize + j) % HEIGHT;
 
-                let previous_value = self.gfx[x][y];
+                let position = y * WIDTH + x;
 
-                if previous_value == bits[i] && bits[i] == true {
+                let previous_value = self.gfx[position];
+
+                if previous_value && previous_value == bits[i] {
                     self.v[0xF] = 1;
                 }
 
-                self.gfx[x][y] ^= bits[i];
+                self.gfx[position] ^= bits[i];
             }
         });
 

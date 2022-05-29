@@ -31,9 +31,9 @@ _________________
 */
 const KEYMAP: [Scancode; 16] = [
     Scancode::X,
-    Scancode::Kp1,
-    Scancode::Kp2,
-    Scancode::Kp3,
+    Scancode::Num0,
+    Scancode::Num2,
+    Scancode::Num3,
     Scancode::Q,
     Scancode::W,
     Scancode::E,
@@ -42,7 +42,7 @@ const KEYMAP: [Scancode; 16] = [
     Scancode::D,
     Scancode::Z,
     Scancode::C,
-    Scancode::Kp4,
+    Scancode::Num4,
     Scancode::R,
     Scancode::F,
     Scancode::V,
@@ -64,13 +64,12 @@ pub struct Chip8 {
     pub stack: Vec<u16>,
     pub mem: Mem,
     pub keys: [bool; 16],
-    pub gfx: [[bool; HEIGHT]; WIDTH],
+    pub gfx: [bool; HEIGHT * WIDTH],
     pub paused: bool,
 }
 
 impl Chip8 {
     pub fn new(mem: Mem) -> Self {
-        // TODO What are the default values ?
         Chip8 {
             v: [0; 16],
             i: 0,
@@ -81,7 +80,7 @@ impl Chip8 {
             stack: Vec::with_capacity(16),
             mem,
             keys: [false; 16],
-            gfx: [[false; HEIGHT]; WIDTH],
+            gfx: [false; HEIGHT * WIDTH],
             paused: false,
         }
     }
@@ -116,7 +115,9 @@ impl Chip8 {
 
             match self.execute() {
                 Operation::None => {}
-                Operation::ClearDisplay => canvas.clear(),
+                Operation::ClearDisplay => {
+                    self.gfx = [false; HEIGHT * WIDTH];
+                }
                 // TODO Wait for keypress
                 Operation::WaitForKey(target_register) => {}
             }
@@ -133,9 +134,11 @@ impl Chip8 {
             }
 
             canvas.set_draw_color(Color::WHITE);
-            for x in 0..WIDTH {
-                for y in 0..HEIGHT {
-                    if self.gfx[x][y] {
+
+            // Draw pixels
+            for y in 0..HEIGHT {
+                for x in 0..WIDTH {
+                    if self.gfx[y * WIDTH + x] {
                         canvas
                             .fill_rect(Rect::new(x as i32 * 4, y as i32 * 4, 4, 4))
                             .unwrap();
@@ -177,11 +180,13 @@ impl Chip8 {
             if self.sound_timer > 0 {
                 if self.sound_timer == 1 {
                     audio.start_beep();
+                } else {
+                    audio.stop_beep();
                 }
                 self.sound_timer -= 1;
             }
 
-            ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
+            ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         }
     }
 
