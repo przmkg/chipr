@@ -41,23 +41,14 @@ impl Mem {
     }
 
     pub fn get(&self, address: u16) -> u8 {
-        if address < 0x200 {
-            println!("GET ADDR: {:04X}", address);
-        }
         self.ram[address as usize]
     }
 
     pub fn set(&mut self, address: u16, value: u8) {
-        if address < 0x200 {
-            println!("SET ADDR: {:04X}", address);
-        }
         self.ram[address as usize] = value;
     }
 
     pub fn read_bytes(&self, address: u16, n: u8) -> &[u8] {
-        if address < 0x200 {
-            println!("RDD ADDR: {:04X}", address);
-        }
         &self.ram[address as usize..address as usize + n as usize]
     }
 

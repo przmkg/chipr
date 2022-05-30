@@ -20,10 +20,10 @@ pub trait Instructions {
     fn call_addr(&mut self, opcode: u16);
 
     // 3xkk
-    fn se_vx_b(&mut self, opcode: u16);
+    fn se_vx_kk(&mut self, opcode: u16);
 
     // 4xkk
-    fn sne_vx_b(&mut self, opcode: u16);
+    fn sne_vx_kk(&mut self, opcode: u16);
 
     // 5xy0
     fn se_vx_vy(&mut self, opcode: u16);
@@ -86,7 +86,7 @@ pub trait Instructions {
     fn ld_vx_dt(&mut self, opcode: u16);
 
     // Fx0A
-    fn ld_vx_k(&mut self, opcode: u16) -> u8;
+    fn ld_vx_k(&mut self, opcode: u16);
 
     // Fx15
     fn ld_dt_vx(&mut self, opcode: u16);
@@ -118,6 +118,7 @@ impl Instructions for Chip8 {
 
     // 00E0
     fn cls(&mut self) {
+        self.gfx = [false; HEIGHT * WIDTH];
         self.pc += 2;
     }
 
@@ -138,12 +139,12 @@ impl Instructions for Chip8 {
     fn call_addr(&mut self, opcode: u16) {
         let addr = opcode & ADDR_MASK;
 
-        self.stack.push(self.pc);
+        self.stack.push(self.pc + 2);
         self.pc = addr;
     }
 
     // 3xkk
-    fn se_vx_b(&mut self, opcode: u16) {
+    fn se_vx_kk(&mut self, opcode: u16) {
         let (x, kk) = get_xkk(opcode);
 
         if self.v[x] == kk {
@@ -154,7 +155,7 @@ impl Instructions for Chip8 {
     }
 
     // 4xkk
-    fn sne_vx_b(&mut self, opcode: u16) {
+    fn sne_vx_kk(&mut self, opcode: u16) {
         let (x, kk) = get_xkk(opcode);
 
         if self.v[x] != kk {
@@ -378,10 +379,11 @@ impl Instructions for Chip8 {
     }
 
     // Fx0A
-    fn ld_vx_k(&mut self, opcode: u16) -> u8 {
+    fn ld_vx_k(&mut self, opcode: u16) {
         let (x, _) = get_xkk(opcode);
+        self.paused = true;
+        self.target_register = Some(x);
         self.pc += 2;
-        x as u8
     }
 
     // Fx15
@@ -415,7 +417,6 @@ impl Instructions for Chip8 {
         let font = self.v[x] & 0xF;
 
         let addr = self.mem.get_font_address(font);
-        println!("{}", addr);
         self.i = addr;
         self.pc += 2;
     }
@@ -427,10 +428,9 @@ impl Instructions for Chip8 {
         let addr = self.i;
         let value = self.v[x];
 
-        // TODO Unsure
         self.mem.set(addr, value / 100);
-        self.mem.set(addr + 1, (value / 10) % 10);
-        self.mem.set(addr + 2, (value % 100) % 10);
+        self.mem.set(addr + 1, (value % 100) / 10);
+        self.mem.set(addr + 2, value % 10);
 
         self.pc += 2;
     }
