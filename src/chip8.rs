@@ -193,8 +193,7 @@ impl Chip8 {
         let (h, l) = (self.mem.get(self.pc), self.mem.get(self.pc + 1));
         let opcode = bytes_to_word(h, l);
 
-        // println!("PC: {:04X}\tOpcode: {:04X}", self.pc, opcode);
-        // println!("opcode: {:04X}", opcode);
+        self.pc += 2;
 
         match split_into_4bits(opcode) {
             (0, 0, 0xE, 0) => self.cls(),

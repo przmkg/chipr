@@ -119,7 +119,6 @@ impl Instructions for Chip8 {
     // 00E0
     fn cls(&mut self) {
         self.gfx = [false; HEIGHT * WIDTH];
-        self.pc += 2;
     }
 
     // 00EE
@@ -139,7 +138,7 @@ impl Instructions for Chip8 {
     fn call_addr(&mut self, opcode: u16) {
         let addr = opcode & ADDR_MASK;
 
-        self.stack.push(self.pc + 2);
+        self.stack.push(self.pc);
         self.pc = addr;
     }
 
@@ -148,8 +147,6 @@ impl Instructions for Chip8 {
         let (x, kk) = get_xkk(opcode);
 
         if self.v[x] == kk {
-            self.pc += 4;
-        } else {
             self.pc += 2;
         }
     }
@@ -159,8 +156,6 @@ impl Instructions for Chip8 {
         let (x, kk) = get_xkk(opcode);
 
         if self.v[x] != kk {
-            self.pc += 4;
-        } else {
             self.pc += 2;
         }
     }
@@ -170,8 +165,6 @@ impl Instructions for Chip8 {
         let (x, y) = get_xy(opcode);
 
         if self.v[x] == self.v[y] {
-            self.pc += 4;
-        } else {
             self.pc += 2;
         }
     }
@@ -181,7 +174,6 @@ impl Instructions for Chip8 {
         let (x, kk) = get_xkk(opcode);
 
         self.v[x] = kk;
-        self.pc += 2;
     }
 
     // 7xkk
@@ -192,8 +184,6 @@ impl Instructions for Chip8 {
         let (res, overflow) = self.v[x].overflowing_add(kk);
         self.v[x] = res;
         self.v[0xF] = if overflow { 1 } else { 0 };
-
-        self.pc += 2;
     }
 
     // 8xy0
@@ -201,7 +191,6 @@ impl Instructions for Chip8 {
         let (x, y) = get_xy(opcode);
 
         self.v[x] = self.v[y];
-        self.pc += 2;
     }
 
     // 8xy1
@@ -209,7 +198,6 @@ impl Instructions for Chip8 {
         let (x, y) = get_xy(opcode);
 
         self.v[x] |= self.v[y];
-        self.pc += 2;
     }
 
     // 8xy2
@@ -217,7 +205,6 @@ impl Instructions for Chip8 {
         let (x, y) = get_xy(opcode);
 
         self.v[x] &= self.v[y];
-        self.pc += 2;
     }
 
     // 8xy3
@@ -225,7 +212,6 @@ impl Instructions for Chip8 {
         let (x, y) = get_xy(opcode);
 
         self.v[x] ^= self.v[y];
-        self.pc += 2;
     }
 
     // 8xy4
@@ -235,8 +221,6 @@ impl Instructions for Chip8 {
         let (result, overflow) = self.v[x].overflowing_add(self.v[y]);
         self.v[x] = result;
         self.v[0xF] = if overflow { 1 } else { 0 };
-
-        self.pc += 2;
     }
 
     // 8xy5
@@ -247,8 +231,6 @@ impl Instructions for Chip8 {
 
         self.v[x] = result;
         self.v[0xF] = if overflow { 1 } else { 0 };
-
-        self.pc += 2;
     }
 
     // 8xy6
@@ -258,8 +240,6 @@ impl Instructions for Chip8 {
         self.v[0xF] = self.v[x] & 1;
         let (result, _) = self.v[x].overflowing_shr(1);
         self.v[x] = result;
-
-        self.pc += 2;
     }
 
     // 8xy7
@@ -270,8 +250,6 @@ impl Instructions for Chip8 {
 
         self.v[x] = result;
         self.v[0xF] = if overflow { 0 } else { 1 };
-
-        self.pc += 2;
     }
 
     // 8xyE
@@ -281,7 +259,6 @@ impl Instructions for Chip8 {
         self.v[0xF] = self.v[x] & 0x80;
         let (result, _) = self.v[x].overflowing_shl(1);
         self.v[x] = result;
-        self.pc += 2;
     }
 
     // 9xy0
@@ -289,8 +266,6 @@ impl Instructions for Chip8 {
         let (x, y) = get_xy(opcode);
 
         if self.v[x] != self.v[y] {
-            self.pc += 4;
-        } else {
             self.pc += 2;
         }
     }
@@ -300,7 +275,6 @@ impl Instructions for Chip8 {
         let addr = opcode & ADDR_MASK;
 
         self.i = addr;
-        self.pc += 2;
     }
 
     // Bnnn
@@ -317,7 +291,6 @@ impl Instructions for Chip8 {
         let rnd: u8 = rand::thread_rng().gen();
 
         self.v[x] = rnd & kk;
-        self.pc += 2;
     }
 
     // Dxyn
@@ -344,8 +317,6 @@ impl Instructions for Chip8 {
                 self.gfx[position] ^= bits[i];
             }
         });
-
-        self.pc += 2;
     }
 
     // Ex9E
@@ -353,8 +324,6 @@ impl Instructions for Chip8 {
         let (x, _) = get_xkk(opcode);
 
         if self.keys[x as usize] {
-            self.pc += 4;
-        } else {
             self.pc += 2;
         }
     }
@@ -364,8 +333,6 @@ impl Instructions for Chip8 {
         let (x, _) = get_xkk(opcode);
 
         if !self.keys[x as usize] {
-            self.pc += 4;
-        } else {
             self.pc += 2;
         }
     }
@@ -375,7 +342,6 @@ impl Instructions for Chip8 {
         let (x, _) = get_xkk(opcode);
 
         self.v[x as usize] = self.delay_timer;
-        self.pc += 2;
     }
 
     // Fx0A
@@ -383,7 +349,6 @@ impl Instructions for Chip8 {
         let (x, _) = get_xkk(opcode);
         self.paused = true;
         self.target_register = Some(x);
-        self.pc += 2;
     }
 
     // Fx15
@@ -391,7 +356,6 @@ impl Instructions for Chip8 {
         let (x, _) = get_xkk(opcode);
 
         self.delay_timer = self.v[x as usize];
-        self.pc += 2;
     }
 
     // Fx18
@@ -399,7 +363,6 @@ impl Instructions for Chip8 {
         let (x, _) = get_xkk(opcode);
 
         self.sound_timer = self.v[x as usize];
-        self.pc += 2;
     }
 
     // Fx1E
@@ -408,7 +371,6 @@ impl Instructions for Chip8 {
 
         // TODO Set overflow like on the Amiga implementation
         self.i += self.v[x as usize] as u16;
-        self.pc += 2;
     }
 
     // Fx29
@@ -418,7 +380,6 @@ impl Instructions for Chip8 {
 
         let addr = self.mem.get_font_address(font);
         self.i = addr;
-        self.pc += 2;
     }
 
     // Fx33
@@ -431,8 +392,6 @@ impl Instructions for Chip8 {
         self.mem.set(addr, value / 100);
         self.mem.set(addr + 1, (value % 100) / 10);
         self.mem.set(addr + 2, value % 10);
-
-        self.pc += 2;
     }
 
     // Fx55
@@ -443,7 +402,6 @@ impl Instructions for Chip8 {
             let addr = self.i + i as u16;
             self.mem.set(addr, self.v[i]);
         }
-        self.pc += 2;
     }
 
     // Fx65
@@ -454,7 +412,6 @@ impl Instructions for Chip8 {
             let addr = self.i + i as u16;
             self.v[i] = self.mem.get(addr);
         }
-        self.pc += 2;
     }
 }
 
