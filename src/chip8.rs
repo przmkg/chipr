@@ -149,7 +149,7 @@ impl Chip8 {
             canvas.set_draw_color(Color::BLACK);
             canvas.present();
 
-            ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+            ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 500));
         }
     }
 
@@ -159,13 +159,10 @@ impl Chip8 {
         }
 
         if self.sound_timer > 0 {
-            if self.sound_timer == 1 {
-                audio.start_beep();
-            } else {
-                audio.stop_beep();
-            }
-
+            audio.start_beep();
             self.sound_timer -= 1;
+        } else {
+            audio.stop_beep();
         }
     }
 
@@ -245,8 +242,10 @@ fn draw_ui(
     v: &[u8; 16],
 ) {
     canvas.set_draw_color(Color::GRAY);
+
     // Draw the border of the game screen
     canvas.draw_lines(&lines[..]).unwrap();
+
     // Draw register values
     for i in 0..16 {
         // TODO Optimize font drawing
