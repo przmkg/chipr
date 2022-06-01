@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::{fs::File, io::BufReader};
 
 use chip8::{Chip8, HEIGHT, WIDTH};
-use mem::Mem;
+use mem::{Mem, RAM_SIZE};
 
 mod chip8;
 mod instr;
@@ -87,6 +87,16 @@ impl App for Chip8Emu {
                 if let Some(chip8) = &mut self.chip8 {
                     chip8.execute();
                 }
+            }
+        });
+
+        egui::SidePanel::right("instructions").show(ctx, |ui| {
+            if let Some(chip8) = &mut self.chip8 {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for i in 0..RAM_SIZE {
+                        ui.label(format!("{:#04X} -> {:#04X}", i, chip8.mem.get(i as u16)));
+                    }
+                });
             }
         });
 

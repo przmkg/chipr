@@ -1,7 +1,7 @@
-const RAM_SIZE: usize = 4096;
+pub const RAM_SIZE: usize = 4096;
 
 pub struct Mem {
-    ram: [u8; RAM_SIZE],
+    pub ram: [u8; RAM_SIZE],
 }
 
 impl Mem {
