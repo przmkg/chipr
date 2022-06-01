@@ -6,8 +6,5 @@ edition = "2021"
 
 [dependencies]
 rand = "0.8.5"
-
-[dependencies.sdl2]
-version = "0.35"
-default-features = false
-features = ["gfx", "ttf"]
+eframe = "0.18.0"
+rfd = "0.8.2"
