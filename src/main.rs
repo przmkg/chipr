@@ -1,6 +1,5 @@
 use eframe::egui::{Context, Sense, Visuals};
-use eframe::emath::pos2;
-use eframe::epaint::{Color32, Pos2, Rect, Rounding, Vec2};
+use eframe::epaint::{Color32, Rect, Rounding, Vec2};
 use eframe::{egui, App, Frame, NativeOptions};
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -57,8 +56,6 @@ impl App for Chip8Emu {
         }
 
         egui::SidePanel::left("load_panel").show(ctx, |ui| {
-            ui.heading("Menu");
-
             if ui.button("Open ROM").clicked() {
                 if let Some(path) = rfd::FileDialog::new().pick_file() {
                     self.rom_path = Some(path.clone());
@@ -66,23 +63,62 @@ impl App for Chip8Emu {
                 }
             }
 
-            if ui.button("Reset ROM").clicked() {
-                println!("PATH: {:?}", self.rom_path);
-                if self.rom_path.is_some() {
-                    self.start_chip8();
+            if self.chip8.is_none() {
+                ui.set_enabled(false);
+            }
+
+            if ui.button("Start").clicked() {
+                if let Some(chip8) = &mut self.chip8 {
+                    chip8.paused = false;
                 }
+            }
+
+            if ui.button("Stop").clicked() {
+                if let Some(chip8) = &mut self.chip8 {
+                    chip8.paused = true;
+                }
+            }
+
+            if ui.button("Reset ROM").clicked() {
+                self.start_chip8();
+            }
+
+            if ui.button("Step 1").clicked() {
+                if let Some(chip8) = &mut self.chip8 {
+                    chip8.execute();
+                }
+            }
+        });
+
+        egui::TopBottomPanel::bottom("debug_panel").show(ctx, |ui| {
+            if let Some(chip8) = &mut self.chip8 {
+                ui.horizontal(|ui| {
+                    ui.label(format!("I = {:#04X}", chip8.i));
+                    ui.label(format!("PC = {:#04X}", chip8.pc));
+                });
+
+                egui::Grid::new("v_regs").striped(true).show(ui, |ui| {
+                    for i in 0..16 {
+                        if i != 0 && i % 4 == 0 {
+                            ui.end_row();
+                        }
+
+                        ui.label(format!("V{:X}={:02X}", i, chip8.v[i]));
+                    }
+                });
             }
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // Draw the game
+            // TODO Probably not very efficient
             let (response, painter) = ui.allocate_painter(
                 Vec2::new((WIDTH * 4) as f32, (HEIGHT * 4) as f32),
                 Sense::hover(),
             );
 
             if let Some(chip8) = &mut self.chip8 {
-                chip8.execute();
+                chip8.run();
 
                 for y in 0..HEIGHT {
                     for x in 0..WIDTH {

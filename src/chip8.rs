@@ -64,7 +64,7 @@ impl Chip8 {
             mem,
             keys: [false; 16],
             gfx: [false; HEIGHT * WIDTH],
-            paused: false,
+            paused: true,
             target_register: None,
         }
     }
@@ -89,24 +89,13 @@ impl Chip8 {
         }
     }
 
-    fn tick_timers(&mut self) {
-        if self.delay_timer > 0 {
-            self.delay_timer -= 1;
-        }
-
-        if self.sound_timer > 0 {
-            // audio.start_beep();
-            self.sound_timer -= 1;
-        } else {
-            // audio.stop_beep();
+    pub fn run(&mut self) {
+        if !self.paused {
+            self.execute();
         }
     }
 
     pub fn execute(&mut self) {
-        if self.paused {
-            return;
-        }
-
         let (h, l) = (self.mem.get(self.pc), self.mem.get(self.pc + 1));
         let opcode = bytes_to_word(h, l);
 
@@ -153,5 +142,18 @@ impl Chip8 {
         }
 
         self.tick_timers();
+    }
+
+    fn tick_timers(&mut self) {
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+
+        if self.sound_timer > 0 {
+            // audio.start_beep();
+            self.sound_timer -= 1;
+        } else {
+            // audio.stop_beep();
+        }
     }
 }
