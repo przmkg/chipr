@@ -58,7 +58,7 @@ impl App for Chip8Emu {
         egui::SidePanel::left("load_panel").show(ctx, |ui| {
             if ui.button("Open ROM").clicked() {
                 if let Some(path) = rfd::FileDialog::new().pick_file() {
-                    self.rom_path = Some(path.clone());
+                    self.rom_path = Some(path);
                     self.start_chip8();
                 }
             }

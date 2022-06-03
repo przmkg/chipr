@@ -302,7 +302,7 @@ impl Instructions for Chip8 {
         data.iter().enumerate().for_each(|(j, byte)| {
             let bits = byte_to_bit_array(*byte);
 
-            for i in 0..bits.len() {
+            for (i, bit) in bits.iter().enumerate() {
                 let x = (self.v[rx] as usize + i) % WIDTH;
                 let y = (self.v[ry] as usize + j) % HEIGHT;
 
@@ -310,11 +310,11 @@ impl Instructions for Chip8 {
 
                 let previous_value = self.gfx[position];
 
-                if previous_value && previous_value == bits[i] {
+                if previous_value && previous_value == *bit {
                     self.v[0xF] = 1;
                 }
 
-                self.gfx[position] ^= bits[i];
+                self.gfx[position] ^= *bit;
             }
         });
     }

@@ -27,9 +27,7 @@ impl Mem {
 
         let mut ram: [u8; RAM_SIZE] = [0; RAM_SIZE];
 
-        for i in 0..80 {
-            ram[i + 0x50] = fonts[i];
-        }
+        ram[0x50..0xA0].copy_from_slice(&fonts[..0x50]);
 
         Mem { ram }
     }
